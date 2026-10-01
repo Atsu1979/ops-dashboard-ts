@@ -24,7 +24,7 @@ h2 { font-size: 15px; margin: 20px 0 6px; }
 .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
 .seg button { border: 0; border-radius: 0; }
 .seg button[aria-pressed="true"] { background: var(--accent); color: var(--bg); }
-button { font: inherit; padding: 4px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--card); color: var(--fg); cursor: pointer; }
+button { white-space: nowrap; font: inherit; padding: 4px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--card); color: var(--fg); cursor: pointer; }
 button:disabled { opacity: 0.5; cursor: default; }
 input { font: inherit; padding: 4px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--card); color: var(--fg); min-width: 0; }
 .wrap { overflow-x: auto; }
