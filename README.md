@@ -34,6 +34,7 @@ re-show acknowledged items, so the tests pin them down:
 | GET | `/api/tasks` | tasks not started |
 | GET | `/api/changes?days=7` | detected config changes and whether they went through a snapshot |
 | GET | `/api/usage` | token usage per machine (today / 7 days, heaviest sessions) |
+| GET | `/api/vuln` | running-image vulnerability scan from `vuln_status.json` (`{}` when the file is missing) |
 | POST | `/api/ack` | `{ "key": "<4-8 hex>" }` marks matching incidents as seen |
 
 `POST /api/ack` requires an `x-ops-ack: 1` header. A page on another origin cannot send a custom header
@@ -47,7 +48,7 @@ npm ci
 npm test
 npm run build
 OPS_LEDGER_DB=~/agent_ledger.db OPS_CHANGES_DB=~/ops/changes.db OPS_STATE=~/ops/ops_dash_state.json \
-OPS_USAGE_MAC=~/ops/usage_mac.json PORT=8787 npm start
+OPS_USAGE_MAC=~/ops/usage_mac.json OPS_VULN=~/ops/vuln_status.json PORT=8787 npm start
 # from a laptop: ssh -L 8787:127.0.0.1:8787 server, then open http://localhost:8787
 ```
 

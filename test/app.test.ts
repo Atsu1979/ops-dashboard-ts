@@ -31,6 +31,7 @@ function fixture(): Config {
     changesDb: join(dir, "changes.db"),
     statePath: join(dir, "state.json"),
     usageMacPath: join(dir, "usage_mac.json"),
+    vulnPath: join(dir, "vuln_status.json"),
     usageCmd: [],
     days: 7,
     usageCacheMs: 0,
@@ -85,5 +86,31 @@ describe("API", () => {
     expect(u.mac.today.weighted).toBe(50);
     expect(u.mac.week.weighted).toBe(150);
     expect(u.server).toBeNull();
+  });
+
+  test("vuln: missing or broken file gives {} with 200", async () => {
+    const cfg = fixture();
+    const app = createApp(cfg);
+    const missing = await app.request("/api/vuln");
+    expect(missing.status).toBe(200);
+    expect(await missing.json()).toEqual({});
+    writeFileSync(cfg.vulnPath, "{not json");
+    const broken = await app.request("/api/vuln");
+    expect(broken.status).toBe(200);
+    expect(await broken.json()).toEqual({});
+  });
+
+  test("vuln: returns the scan with defaults for missing keys", async () => {
+    const cfg = fixture();
+    writeFileSync(cfg.vulnPath, JSON.stringify({ ts: "2026-10-01T06:00:00+09:00", images: 12, totals: { P1: 1, H: 4 }, new_hot: ["CVE-2026-0001 nginx"] }));
+    const r = await (await createApp(cfg).request("/api/vuln")).json();
+    expect(r).toEqual({
+      ts: "2026-10-01T06:00:00+09:00",
+      images: 12,
+      totals: { P1: 1, P2: 0, P3: 0, H: 4 },
+      new_hot: ["CVE-2026-0001 nginx"],
+      errors: [],
+      warns: [],
+    });
   });
 });

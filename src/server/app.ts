@@ -12,12 +12,15 @@ import {
   totals,
   type Usage,
 } from "./data.ts";
+import { normalizeVuln } from "./vuln.ts";
 
 export interface Config {
   ledgerDb: string;
   changesDb: string;
   statePath: string;
   usageMacPath: string;
+  /** vuln_status.json from the running-image scanner */
+  vulnPath: string;
   /** command that prints this machine's usage JSON; empty to skip */
   usageCmd: string[];
   days: number;
@@ -93,6 +96,12 @@ export function createApp(cfg: Config) {
       ]),
     );
     return c.json(out);
+  });
+
+  /** Running-image vulnerability scan. A missing or unreadable file gives `{}` (still 200). */
+  app.get("/api/vuln", (c) => {
+    const raw = readJson<unknown>(cfg.vulnPath);
+    return c.json(raw === null ? {} : normalizeVuln(raw));
   });
 
   /**
