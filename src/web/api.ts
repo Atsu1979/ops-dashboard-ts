@@ -47,6 +47,31 @@ export interface HostUsage {
   sessions: Session[];
 }
 export type UsageRes = Record<"mac" | "server", HostUsage | null>;
+export interface VulnTotals {
+  P1: number;
+  P2: number;
+  P3: number;
+  H: number;
+}
+export interface VulnStatus {
+  ts: string | null;
+  images: number;
+  totals: VulnTotals;
+  new_hot: string[];
+  errors: string[];
+  warns: string[];
+}
+/** `{}` when the scanner has not written vuln_status.json (or it cannot be read). */
+export type VulnRes = VulnStatus | Record<string, never>;
+export type VulnLevel = "red" | "yellow" | "green" | "none";
+
+/** red: P1 > 0 or scan errors; yellow: P2 > 0; green: otherwise; none: no scan result yet. */
+export function vulnLevel(v: VulnRes | null): VulnLevel {
+  if (!v || !("totals" in v)) return "none";
+  if (v.totals.P1 > 0 || v.errors.length > 0) return "red";
+  if (v.totals.P2 > 0) return "yellow";
+  return "green";
+}
 
 async function get<T>(path: string): Promise<T> {
   const r = await fetch(path);
@@ -59,6 +84,7 @@ export const api = {
   tasks: () => get<{ tasks: Task[] }>("/api/tasks"),
   changes: (days: number) => get<{ days: number; changes: Change[] }>(`/api/changes?days=${days}`),
   usage: () => get<UsageRes>("/api/usage"),
+  vuln: () => get<VulnRes>("/api/vuln"),
   ack: async (key: string): Promise<string[]> => {
     const r = await fetch("/api/ack", {
       method: "POST",

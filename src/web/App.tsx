@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { api, fmt, type Change, type ItemsRes, type Task, type UsageRes } from "./api.ts";
+import { api, fmt, vulnLevel, type Change, type ItemsRes, type Task, type UsageRes, type VulnRes } from "./api.ts";
 
 type Filter = "all" | "本人待ち" | "警報";
 const REFRESH_MS = 60_000;
@@ -10,6 +10,7 @@ export function App() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [changes, setChanges] = useState<Change[]>([]);
   const [usage, setUsage] = useState<UsageRes | null>(null);
+  const [vuln, setVuln] = useState<VulnRes | null>(null);
   const [filter, setFilter] = useState<Filter>("all");
   const [q, setQ] = useState("");
   const [err, setErr] = useState<string | null>(null);
@@ -26,6 +27,7 @@ export function App() {
       setErr(String(e));
     }
     api.usage().then(setUsage).catch(() => setUsage(null));
+    api.vuln().then(setVuln).catch(() => setVuln(null));
   }, []);
 
   useEffect(() => {
@@ -155,6 +157,11 @@ export function App() {
       </section>
 
       <section>
+        <h2>稼働イメージ脆弱性</h2>
+        <VulnCard v={vuln} />
+      </section>
+
+      <section>
         <h2>重い会話（入力換算の順）</h2>
         <div className="wrap">
           <table>
@@ -185,6 +192,37 @@ function Card({ label, value, alert = false }: { label: string; value: number | 
     <div className="card">
       <div className="muted small">{label}</div>
       <div className={`big${alert ? " red" : ""}${typeof value === "string" ? " mid" : ""}`}>{value}</div>
+    </div>
+  );
+}
+
+const LEVEL_TEXT = { red: "要対応", yellow: "注意", green: "問題なし", none: "結果なし" } as const;
+
+function VulnCard({ v }: { v: VulnRes | null }) {
+  const level = vulnLevel(v);
+  if (!v || !("totals" in v)) {
+    return <div className={`card vuln ${level}`}><span className="muted">走査結果なし（vuln_status.json が無いか読めない）</span></div>;
+  }
+  const badges = [["P1", v.totals.P1], ["P2", v.totals.P2], ["P3", v.totals.P3], ["HIGH", v.totals.H]] as const;
+  return (
+    <div className={`card vuln ${level}`}>
+      <div className="bar">
+        <span className={`tag ${level}`}>{LEVEL_TEXT[level]}</span>
+        {badges.map(([k, n]) => (
+          <span key={k} className={`tag${n > 0 && (k === "P1" || k === "P2") ? ` ${k === "P1" ? "red" : "yellow"}` : ""}`}>
+            {k} <b>{n}</b>
+          </span>
+        ))}
+        <span className="muted small">稼働イメージ {v.images}・最終走査 {short(v.ts)}</span>
+      </div>
+      {v.new_hot.length > 0 && (
+        <>
+          <div className="small"><b>新たに出た要注意</b></div>
+          <ul className="small">{v.new_hot.map((x, i) => <li key={i}><code>{x}</code></li>)}</ul>
+        </>
+      )}
+      {v.errors.length > 0 && <ul className="small red">{v.errors.map((x, i) => <li key={i}>{x}</li>)}</ul>}
+      {v.warns.length > 0 && <ul className="small muted">{v.warns.map((x, i) => <li key={i}>{x}</li>)}</ul>}
     </div>
   );
 }

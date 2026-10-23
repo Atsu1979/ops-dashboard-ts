@@ -1,9 +1,9 @@
 :root {
-  --bg: #f7f7f5; --fg: #1d1d1b; --muted: #6b6b66; --card: #fff; --line: #e3e3de; --red: #c0392b; --accent: #2f5fd0;
+  --bg: #f7f7f5; --fg: #1d1d1b; --muted: #6b6b66; --card: #fff; --line: #e3e3de; --red: #c0392b; --yellow: #a66f00; --green: #2e7d32; --accent: #2f5fd0;
   color-scheme: light dark;
 }
 @media (prefers-color-scheme: dark) {
-  :root { --bg: #171716; --fg: #ecece8; --muted: #a3a39c; --card: #222220; --line: #34342f; --red: #ff6b5b; --accent: #8fb0ff; }
+  :root { --bg: #171716; --fg: #ecece8; --muted: #a3a39c; --card: #222220; --line: #34342f; --red: #ff6b5b; --yellow: #f0b429; --green: #6fcf7a; --accent: #8fb0ff; }
 }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--fg); font: 14px/1.5 -apple-system, "Hiragino Sans", "Noto Sans JP", sans-serif; }
@@ -36,4 +36,12 @@ th { color: var(--muted); font-weight: 600; }
 .ellipsis { max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tag { display: inline-block; padding: 0 6px; border-radius: 4px; border: 1px solid var(--line); white-space: nowrap; }
 .tag.red { color: var(--red); border-color: var(--red); }
+.tag.yellow { color: var(--yellow); border-color: var(--yellow); }
+.tag.green { color: var(--green); border-color: var(--green); }
+.vuln { border-left-width: 4px; }
+.vuln.red { border-left-color: var(--red); }
+.vuln.yellow { border-left-color: var(--yellow); }
+.vuln.green { border-left-color: var(--green); }
+.vuln ul { margin: 4px 0 0; padding-left: 18px; }
+.vuln .bar { margin-bottom: 4px; }
 code { font-size: 11px; }

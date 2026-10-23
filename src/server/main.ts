@@ -12,6 +12,7 @@ const app = createApp({
   changesDb: env.OPS_CHANGES_DB ?? `${home}/ops/changes.db`,
   statePath: env.OPS_STATE ?? `${home}/ops/ops_dash_state.json`,
   usageMacPath: env.OPS_USAGE_MAC ?? `${home}/ops/usage_mac.json`,
+  vulnPath: env.OPS_VULN ?? `${home}/ops/vuln_status.json`,
   usageCmd: (env.OPS_USAGE_CMD ?? `python3 ${home}/cc_usage.py --dir ${home}/.claude/projects --host server`)
     .split(" ")
     .filter(Boolean),
