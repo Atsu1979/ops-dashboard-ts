@@ -2,10 +2,11 @@ import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { fileURLToPath } from "node:url";
 import { dirname, join, relative } from "node:path";
+import { homedir } from "node:os";
 import { createApp } from "./app.ts";
 
 const env = process.env;
-const home = env.HOME ?? "/home/ubuntu";
+const home = env.HOME ?? homedir();
 
 const app = createApp({
   ledgerDb: env.OPS_LEDGER_DB ?? `${home}/agent_ledger.db`,

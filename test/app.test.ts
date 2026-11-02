@@ -13,11 +13,11 @@ function fixture(): Config {
       event_type text, scope text, status text, summary text);
     create table tasks(id integer primary key autoincrement, at text, actor text, what text, status text, why text default '', closed_at text);`);
   const ins = ledger.prepare("insert into agent_events(occurred_at, actor, event_type, scope, status, summary) values (?,?,?,?,?,?)");
-  ins.run("2026-09-30 01:00:00", "claude", "gate:content", "tabi", "blocked", "記事 3 本を止めた");
-  ins.run("2026-09-30 02:00:00", "claude", "gate:content", "tabi", "blocked", "記事 5 本を止めた");
-  ins.run("2026-09-30 03:00:00", "hermes", "approval", "shuzen", "blocked", "承認待ち: ビルド");
-  ins.run("2026-09-30 04:00:00", "hermes", "approval", "shuzen", "done", "終わった件は出ない");
-  ins.run("2026-09-01 04:00:00", "hermes", "approval", "old", "blocked", "8日以上前は出ない");
+  ins.run("2026-09-30 01:00:00", "claude", "gate:content", "site-a", "blocked", "記事 3 本を止めた");
+  ins.run("2026-09-30 02:00:00", "claude", "gate:content", "site-a", "blocked", "記事 5 本を止めた");
+  ins.run("2026-09-30 03:00:00", "agent-b", "approval", "site-b", "blocked", "承認待ち: ビルド");
+  ins.run("2026-09-30 04:00:00", "agent-b", "approval", "site-b", "done", "終わった件は出ない");
+  ins.run("2026-09-01 04:00:00", "agent-b", "approval", "old", "blocked", "8日以上前は出ない");
   ledger.prepare("insert into tasks(at, actor, what, status) values (?,?,?,?)").run("2026-09-29T10:00:00", "human", "請求書を送る", "未着手");
   ledger.prepare("insert into tasks(at, actor, what, status) values (?,?,?,?)").run("2026-09-29T10:00:00", "human", "済み", "完了");
   ledger.close();
