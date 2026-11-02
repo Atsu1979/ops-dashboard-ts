@@ -14,13 +14,13 @@ function python(input: unknown): {
 }
 
 const rows: BlockedRow[] = [
-  { id: 1, occurred_at: "2026-09-30 01:02:03", actor: "claude", event_type: "gate:content", scope: "tabi", summary: "記事 12 本を止めた deadbeef12" },
-  { id: 2, occurred_at: "2026-09-30T05:00:00.500", actor: "claude", event_type: "gate:content", scope: "tabi", summary: "記事 3 本を止めた cafebabe99" },
-  { id: 3, occurred_at: "2026-09-29T23:59:59.123456", actor: "hermes", event_type: "approval", scope: "shuzen", summary: "承認待ち：ビルド ２ 件" },
+  { id: 1, occurred_at: "2026-09-30 01:02:03", actor: "claude", event_type: "gate:content", scope: "site-a", summary: "記事 12 本を止めた deadbeef12" },
+  { id: 2, occurred_at: "2026-09-30T05:00:00.500", actor: "claude", event_type: "gate:content", scope: "site-a", summary: "記事 3 本を止めた cafebabe99" },
+  { id: 3, occurred_at: "2026-09-29T23:59:59.123456", actor: "agent-b", event_type: "approval", scope: "site-b", summary: "承認待ち：ビルド ２ 件" },
   { id: 4, occurred_at: "2026-09-30T10:00:00Z", actor: "codex", event_type: "deploy", scope: "infra", summary: "[sentinel] 再起動の嵐 7 回" },
   { id: 5, occurred_at: "not a date", actor: "shared", event_type: "approval", scope: "x", summary: null },
-  { id: 6, occurred_at: "2026-09-30T00:00:00+09:00", actor: "human", event_type: "approval", scope: "shuzen", summary: "承認待ち：ビルド ３ 件" },
-  { id: 7, occurred_at: "2026-09-28", actor: "claude", event_type: "gate:links", scope: "tabi", summary: "🙂 絵文字 と 長い説明".repeat(5) },
+  { id: 6, occurred_at: "2026-09-30T00:00:00+09:00", actor: "human", event_type: "approval", scope: "site-b", summary: "承認待ち：ビルド ３ 件" },
+  { id: 7, occurred_at: "2026-09-28", actor: "claude", event_type: "gate:links", scope: "site-a", summary: "🙂 絵文字 と 長い説明".repeat(5) },
 ];
 
 describe("parity with ops_dash.py", () => {
