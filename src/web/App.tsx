@@ -23,7 +23,7 @@ export function App() {
       setChanges(c.changes);
       setErr(null);
     } catch (e) {
-      setErr(String(e));
+      setErr(e instanceof Error ? e.message : String(e));
     }
     api.usage().then(setUsage).catch(() => setUsage(null));
   }, []);
@@ -53,7 +53,7 @@ export function App() {
       await api.ack(key);
       await load();
     } catch (e) {
-      setErr(String(e));
+      setErr(e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(null);
     }
@@ -65,7 +65,7 @@ export function App() {
         <h1>運用の見張り板</h1>
         <span className="muted">{items ? `${short(items.generated)} 更新・直近${items.days}日` : "読み込み中…"}</span>
       </header>
-      {err && <p className="error">{err}</p>}
+      {err && <p className="error" role="alert">{err}</p>}
 
       <section className="cards">
         <Card label="本人待ち" value={waiting} alert={waiting > 0} />
@@ -84,14 +84,14 @@ export function App() {
       <section>
         <div className="bar">
           <h2>本人待ち・警報</h2>
-          <div className="seg" role="tablist">
+          <div className="seg" role="group" aria-label="種類で絞り込み">
             {(["all", "本人待ち", "警報"] as const).map((f) => (
               <button key={f} aria-pressed={filter === f} onClick={() => setFilter(f)}>
                 {f === "all" ? "すべて" : f}
               </button>
             ))}
           </div>
-          <input placeholder="絞り込み（種類・内容）" value={q} onChange={(e) => setQ(e.target.value)} />
+          <input type="search" aria-label="絞り込み（種類・内容）" placeholder="絞り込み（種類・内容）" value={q} onChange={(e) => setQ(e.target.value)} />
         </div>
         <div className="wrap">
           <table>
@@ -108,7 +108,7 @@ export function App() {
                   <td className="nowrap">{short(x.last)}</td>
                   <td>{x.summary}</td>
                   <td>
-                    <button disabled={busy === x.key} onClick={() => void ack(x.key)}>
+                    <button disabled={busy === x.key} aria-label={`${x.key} を見たことにする`} onClick={() => void ack(x.key)}>
                       {busy === x.key ? "…" : "見た"}
                     </button>
                   </td>

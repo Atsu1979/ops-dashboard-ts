@@ -48,9 +48,16 @@ export interface HostUsage {
 }
 export type UsageRes = Record<"mac" | "server", HostUsage | null>;
 
+/** Error text for a failed response: the server's `{ error }` message when there is one. */
+async function failure(label: string, r: Response): Promise<Error> {
+  const body = (await r.json().catch(() => null)) as { error?: unknown } | null;
+  const detail = typeof body?.error === "string" ? ` ${body.error}` : "";
+  return new Error(`${label}: ${r.status}${detail}`);
+}
+
 async function get<T>(path: string): Promise<T> {
   const r = await fetch(path);
-  if (!r.ok) throw new Error(`${path}: ${r.status}`);
+  if (!r.ok) throw await failure(path, r);
   return (await r.json()) as T;
 }
 
@@ -65,7 +72,7 @@ export const api = {
       headers: { "content-type": "application/json", "x-ops-ack": "1" },
       body: JSON.stringify({ key }),
     });
-    if (!r.ok) throw new Error(`ack: ${r.status}`);
+    if (!r.ok) throw await failure("ack", r);
     return ((await r.json()) as { acked: string[] }).acked;
   },
 };

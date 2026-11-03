@@ -2,11 +2,21 @@ import { DatabaseSync } from "node:sqlite";
 import { readFileSync, renameSync, writeFileSync, existsSync } from "node:fs";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import { basename } from "node:path";
 import type { BlockedRow, State } from "./items.ts";
 
 const run = promisify(execFile);
 
+/** The ledger database is not there (wrong OPS_LEDGER_DB, or not created yet). Reported as 503. */
+export class MissingDatabaseError extends Error {
+  constructor(path: string) {
+    super(`database not found: ${basename(path)}`); // file name only: do not leak home paths to the page
+    this.name = "MissingDatabaseError";
+  }
+}
+
 function openRo(path: string): DatabaseSync {
+  if (!existsSync(path)) throw new MissingDatabaseError(path);
   return new DatabaseSync(path, { readOnly: true });
 }
 
@@ -67,12 +77,35 @@ export function readChanges(dbPath: string, sinceJstMinute: string, limit = 30):
   }
 }
 
-export function loadState(path: string): State {
-  try {
-    return JSON.parse(readFileSync(path, "utf8")) as State;
-  } catch {
-    return { seen: {}, ack: {} };
+/** The state file exists but is not a JSON object. Writing over it would lose ops_dash.py's data. */
+export class CorruptStateError extends Error {
+  constructor() {
+    super("state file is not valid JSON; refusing to overwrite it");
+    this.name = "CorruptStateError";
   }
+}
+
+/**
+ * Read the state shared with ops_dash.py. A missing file is an empty state.
+ * A broken file is also read as empty for display, but with `strict` (before writing) it throws,
+ * so an ack never replaces a file it could not read.
+ */
+export function loadState(path: string, opts: { strict?: boolean } = {}): State {
+  let text: string;
+  try {
+    text = readFileSync(path, "utf8");
+  } catch (e) {
+    if ((e as NodeJS.ErrnoException).code === "ENOENT") return { seen: {}, ack: {} };
+    throw e;
+  }
+  try {
+    const v: unknown = JSON.parse(text);
+    if (v && typeof v === "object" && !Array.isArray(v)) return v as State;
+  } catch {
+    // fall through
+  }
+  if (opts.strict) throw new CorruptStateError();
+  return { seen: {}, ack: {} };
 }
 
 /** Atomic write (tmp + rename), same as ops_dash.py save(). */

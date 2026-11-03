@@ -20,27 +20,76 @@ const RE =
 
 const pad = (n: number, w = 2): string => String(n).padStart(w, "0");
 
-export function fromMicros(micros: number): Instant {
-  const secs = Math.floor(micros / 1e6);
-  const frac = micros - secs * 1e6;
-  const d = new Date((secs + JST_OFFSET_SEC) * 1000);
+const isLeap = (y: number): boolean => (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+const MONTH_DAYS = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+
+function daysInMonth(year: number, month: number): number {
+  return month === 2 && isLeap(year) ? 29 : (MONTH_DAYS[month - 1] ?? 0);
+}
+
+/** Days since 1970-01-01 for a proleptic Gregorian date (H. Hinnant's days_from_civil), no Date allocation. */
+function daysFromCivil(y: number, m: number, d: number): number {
+  const yy = m <= 2 ? y - 1 : y;
+  const era = Math.floor(yy / 400);
+  const yoe = yy - era * 400;
+  const doy = Math.floor((153 * (m + (m > 2 ? -3 : 9)) + 2) / 5) + d - 1;
+  const doe = yoe * 365 + Math.floor(yoe / 4) - Math.floor(yoe / 100) + doy;
+  return era * 146097 + doe - 719468;
+}
+
+/** A parsed time: whole seconds since the epoch and 0..999999 microseconds, both exact. */
+export interface Parts {
+  sec: number;
+  us: number;
+}
+
+/** Order of two parsed times (negative, zero, positive). */
+export const cmpParts = (a: Parts, b: Parts): number => a.sec - b.sec || a.us - b.us;
+
+/**
+ * Format as JST. Seconds and microseconds are kept apart because a single microsecond count passes
+ * 2^53 (the exact range of a JS number) about 285 years from 1970, and Python accepts years 1-9999.
+ */
+export function fromParts({ sec, us }: Parts): Instant {
+  const d = new Date((sec + JST_OFFSET_SEC) * 1000);
   const base =
-    `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}` +
+    `${pad(d.getUTCFullYear(), 4)}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}` +
     `T${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}`;
-  return { micros, iso: base + (frac ? "." + pad(frac, 6) : "") + "+09:00" };
+  return { micros: sec * 1e6 + us, iso: base + (us ? "." + pad(us, 6) : "") + "+09:00" };
+}
+
+export function fromMicros(micros: number): Instant {
+  const sec = Math.floor(micros / 1e6);
+  return fromParts({ sec, us: micros - sec * 1e6 });
+}
+
+/**
+ * Parse a ledger timestamp. Returns null where Python's to_jst() returns None.
+ * Runs once per row, so it builds no Date.
+ */
+export function parseParts(raw: string | null | undefined): Parts | null {
+  const s = (raw ?? "").replaceAll("Z", "+00:00").replaceAll(" ", "T");
+  const m = RE.exec(s);
+  if (!m) return null;
+  const Y = Number(m[1]), M = Number(m[2]), D = Number(m[3]);
+  const H = Number(m[4] ?? 0), Mi = Number(m[5] ?? 0), S = Number(m[6] ?? 0);
+  const OH = Number(m[9] ?? 0), OM = Number(m[10] ?? 0);
+  // Python rejects out-of-range fields (Feb 30, month 13, 24:00, :60, year 0, offsets of 24h or more);
+  // Date.UTC would silently roll them over instead.
+  if (Y < 1 || M < 1 || M > 12 || D < 1 || D > daysInMonth(Y, M) || H > 23 || Mi > 59 || S > 59 || OH > 23) {
+    return null;
+  }
+  const offset = m[8] ? (m[8] === "-" ? -1 : 1) * (OH * 3600 + OM * 60) : 0;
+  return {
+    sec: daysFromCivil(Y, M, D) * 86400 + H * 3600 + Mi * 60 + S - offset,
+    us: Number((m[7] ?? "").padEnd(6, "0")),
+  };
 }
 
 /** Parse a ledger timestamp. Returns null where Python's to_jst() returns None. */
 export function toJst(raw: string | null | undefined): Instant | null {
-  const s = (raw ?? "").replaceAll("Z", "+00:00").replaceAll(" ", "T");
-  const m = RE.exec(s);
-  if (!m) return null;
-  const [, y, mo, d, h = "0", mi = "0", se = "0", fr = "", sign, oh = "0", om = "0"] = m;
-  const utcSec =
-    Date.UTC(Number(y), Number(mo) - 1, Number(d), Number(h), Number(mi), Number(se)) / 1000;
-  const offset = sign ? (sign === "-" ? -1 : 1) * (Number(oh) * 3600 + Number(om) * 60) : 0;
-  const micros = (utcSec - offset) * 1e6 + Number(fr.padEnd(6, "0") || "0");
-  return fromMicros(micros);
+  const p = parseParts(raw);
+  return p === null ? null : fromParts(p);
 }
 
 export function nowJst(nowMs: number = Date.now()): Instant {
