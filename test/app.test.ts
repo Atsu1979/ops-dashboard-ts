@@ -25,7 +25,7 @@ function fixture(): Config {
   ch.exec("create table changes(id integer primary key autoincrement, detected_at text, kind text, added int, removed int, who text, guarded text)");
   ch.prepare("insert into changes(detected_at, kind, added, removed, who, guarded) values (?,?,?,?,?,?)").run("2026-09-30 10:00", "crontab", 2, 1, "claude", null);
   ch.close();
-  writeFileSync(join(dir, "usage_mac.json"), JSON.stringify({ generated: "x", days: { "2026-09-30": { weighted: 100, calls: 2, out: 5 }, "2026-10-01": { weighted: 50, calls: 1, out: 1 } }, sessions: [] }));
+  writeFileSync(join(dir, "usage_mac.json"), JSON.stringify({ generated: "x", days: { "2026-09-30": { weighted: 100, calls: 2, out: 5 }, "2026-10-01": { weighted: 50, calls: 1, out: 1 } }, sessions: [{ project: "/p", last: "2026-10-01T01:30:00Z", weighted: 9 }, { project: "/q", last: "bad" }] }));
   return {
     ledgerDb: join(dir, "ledger.db"),
     changesDb: join(dir, "changes.db"),
@@ -85,5 +85,6 @@ describe("API", () => {
     expect(u.mac.today.weighted).toBe(50);
     expect(u.mac.week.weighted).toBe(150);
     expect(u.server).toBeNull();
+    expect(u.mac.sessions.map((s: { last: string }) => s.last)).toEqual(["2026-10-01T10:30:00+09:00", "bad"]);
   });
 });

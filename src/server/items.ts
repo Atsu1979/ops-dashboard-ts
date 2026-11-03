@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { toJst, type Instant } from "./time.ts";
+import { cmpParts, fromParts, parseParts, type Instant, type Parts } from "./time.ts";
 
 /** A row of agent_events with status='blocked'. */
 export interface BlockedRow {
@@ -37,44 +37,61 @@ export function norm(summary: string | null): string {
 }
 
 export function keyOf(eventType: string, summary: string | null): string {
-  return createHash("sha1").update(`${eventType}|${norm(summary)}`, "utf8").digest("hex").slice(0, 8);
+  return sha8(`${eventType}|${norm(summary)}`);
 }
+
+const sha8 = (text: string): string => createHash("sha1").update(text, "utf8").digest("hex").slice(0, 8);
 
 export function kindOf(eventType: string, summary: string | null): Kind {
   return eventType.startsWith("gate:") || (summary ?? "").includes("[sentinel]") ? "警報" : "本人待ち";
 }
 
-/** Group blocked rows by kind of incident, in the order the rows arrive (ordered by id). */
+/**
+ * Group blocked rows by kind of incident, in the order the rows arrive (ordered by id).
+ * Rows run into the tens of thousands but groups are few, so per row only the timestamp is parsed
+ * (to two integers) and the hash is looked up by normalised text; ISO strings are built once per group.
+ */
 export function groupBlocked(rows: readonly BlockedRow[]): Group[] {
-  const g = new Map<string, Group>();
+  interface Acc {
+    g: Omit<Group, "first" | "last">;
+    first: Parts | null;
+    last: Parts | null;
+  }
+  const byKey = new Map<string, Acc>();
+  const keyCache = new Map<string, string>();
   for (const r of rows) {
-    const key = keyOf(r.event_type, r.summary);
-    const t = toJst(r.occurred_at);
-    let x = g.get(key);
+    const text = `${r.event_type}|${norm(r.summary)}`;
+    let key = keyCache.get(text);
+    if (key === undefined) keyCache.set(text, (key = sha8(text)));
+    const t = parseParts(r.occurred_at);
+    let x = byKey.get(key);
     if (!x) {
       x = {
-        key,
-        kind: kindOf(r.event_type, r.summary),
-        event_type: r.event_type,
-        scope: r.scope,
-        actor: r.actor,
-        count: 0,
+        g: {
+          key,
+          kind: kindOf(r.event_type, r.summary),
+          event_type: r.event_type,
+          scope: r.scope,
+          actor: r.actor,
+          count: 0,
+          last_id: r.id,
+          summary: r.summary,
+        },
         first: t,
         last: t,
-        last_id: r.id,
-        summary: r.summary,
       };
-      g.set(key, x);
+      byKey.set(key, x);
     }
-    x.count += 1;
-    if (t && (x.last === null || t.micros >= x.last.micros)) {
+    x.g.count += 1;
+    if (t !== null && (x.last === null || cmpParts(t, x.last) >= 0)) {
       x.last = t;
-      x.last_id = r.id;
-      x.summary = r.summary;
+      x.g.last_id = r.id;
+      x.g.summary = r.summary;
     }
-    if (t && (x.first === null || t.micros < x.first.micros)) x.first = t;
+    if (t !== null && (x.first === null || cmpParts(t, x.first) < 0)) x.first = t;
   }
-  return [...g.values()];
+  const at = (p: Parts | null): Instant | null => (p === null ? null : fromParts(p));
+  return [...byKey.values()].map(({ g, first, last }) => ({ ...g, first: at(first), last: at(last) }));
 }
 
 export interface State {
